@@ -33,7 +33,7 @@
           </label>
 
           <div
-            class="flex items-center border rounded-sm bg-white focus-visible:ring-2 focus-within:border-blue-500"
+            class="flex items-center border rounded-sm bg-white focus-within:border-blue-500"
             :class="
               authStore.errors.email
                 ? 'border-red-500 focus-within:border-red-500'
@@ -93,7 +93,7 @@
           </label>
 
           <div
-            class="flex items-center border rounded-sm bg-white focus-visible:ring-2 focus-within:border-blue-500"
+            class="flex items-center border rounded-sm bg-white focus-within:border-blue-500"
             :class="
               authStore.errors.password
                 ? 'border-red-500 focus-within:border-red-500'
@@ -130,22 +130,18 @@
               :aria-describedby="authStore.errors.password ? 'password-error' : undefined"
               v-model.trim="authStore.password"
               @focus="passwordFocused = true"
-              @blur="
-                () => {
-                  passwordFocused = false
-                  validatePassword()
-                }
-              "
+              @blur="handlePasswordBlur"
               class="w-full p-3 bg-transparent focus:outline-none placeholder:text-gray-300 text-sm text-gray-600"
-              ref="passwordInputRef"
             />
 
             <button
+              v-if="passwordFocused || authStore.password.length > 0"
               type="button"
               class="pr-3 text-gray-400 cursor-pointer"
               @mousedown.prevent
               @click="showPassword = !showPassword"
-              v-if="passwordFocused || authStore.password.length > 0"
+              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              :aria-pressed="showPassword"
             >
               <!-- Eye -->
               <svg
@@ -197,10 +193,28 @@
         </div>
 
         <button
-          class="mt-2 bg-blue-600 p-2 rounded-sm text-white font-semibold transition-colors hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 cursor-pointer"
+          class="mt-2 flex items-center justify-center gap-2 bg-blue-600 p-3 rounded-sm text-white font-semibold transition-colors hover:bg-blue-500 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
           type="submit"
+          :disabled="authStore.isLoading"
+          :aria-busy="authStore.isLoading"
         >
-          Login
+          <Transition name="fade" mode="out-in">
+            <span v-if="authStore.isLoading" key="loading-text" class="flex items-center gap-2">
+              <svg
+                class="animate-spin h-4 w-4 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  class="opacity-100"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+            </span>
+          </Transition>
+          <span key="login-text"> Login </span>
         </button>
       </form>
     </section>
@@ -210,31 +224,35 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuthStore } from './store/authStore'
+import { useRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 
-const showPassword = ref<boolean>(false)
-const passwordFocused = ref<boolean>(false)
+const router = useRouter()
 const authStore = useAuthStore()
+
+const showPassword = ref(false)
+const passwordFocused = ref(false)
 
 const { validateCredentials, validateEmail, validatePassword } = authStore
 
+function handlePasswordBlur() {
+  passwordFocused.value = false
+  validatePassword()
+}
+
 async function handleLogin() {
-  if (!validateCredentials()) {
-    return
+  if (!validateCredentials()) return
+  try {
+    await authStore.login()
+
+    toast.success('Login Successful!')
+    router.push('/dashboard')
+  } catch (error: unknown) {
+    let errorMessage = 'An unexpected error occurred. Please try again.'
+
+    if (error instanceof Error) errorMessage = error.message
+    toast.error(errorMessage)
   }
-
-  const response = await fetch('http://localhost:3000/auth/login', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      email: authStore.email,
-      password: authStore.password,
-    }),
-  })
-
-  const data = await response.json()
-  console.log(data)
 }
 </script>
 
