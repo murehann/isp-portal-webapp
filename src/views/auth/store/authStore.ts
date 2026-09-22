@@ -51,10 +51,6 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(): Promise<LoginResponse> {
-    if (!validateCredentials()) {
-      throw new Error('Validation failed')
-    }
-
     isLoading.value = true
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
