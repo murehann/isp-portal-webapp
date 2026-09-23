@@ -222,8 +222,8 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthStore } from '@/stores/authStore'
 import { ref } from 'vue'
-import { useAuthStore } from './store/authStore'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
