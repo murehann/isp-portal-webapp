@@ -1,3 +1,4 @@
-import LoginRoute from './login-route'
+import type { RouteRecordRaw } from 'vue-router'
+import AuthRoutes from './auth-routes'
 
-export const routes = [LoginRoute]
+export const routes: RouteRecordRaw[] = [...AuthRoutes]
