@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 export interface LoginResponse {
   sub: number
-  currentRoleCode: string
+  currentRoleCode: RoleCodes
   accessToken: string
 }
 
@@ -18,6 +18,13 @@ type LoginErrors = {
   password: string | null
 }
 
+export enum RoleCodes {
+  ADMIN = 'ADMIN',
+  EMPLOYEE = 'EMPLOYEE',
+  SUPER_ADMIN = 'SUPER_ADMIN',
+  CUSTOMER = 'CUSTOMER',
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const email = ref<string>('')
   const password = ref<string>('')
@@ -26,6 +33,11 @@ export const useAuthStore = defineStore('auth', () => {
     email: null,
     password: null,
   })
+
+  const accessToken = ref<string | null>(null)
+  const sub = ref<number | null>(null)
+  const isAuthenticated = ref<boolean>(false)
+  const currentRoleCode = ref<RoleCodes | null>(null)
 
   function validateCredentials(): boolean {
     validateEmail()
@@ -50,7 +62,11 @@ export const useAuthStore = defineStore('auth', () => {
     errors.value.password = validationMessage
   }
 
-  async function login(): Promise<LoginResponse> {
+  function isValidRole(value: string): value is RoleCodes {
+    return Object.values(RoleCodes).includes(value as RoleCodes)
+  }
+
+  async function login(): Promise<void> {
     isLoading.value = true
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
@@ -71,11 +87,17 @@ export const useAuthStore = defineStore('auth', () => {
 
       const data: LoginResponse = await response.json()
 
-      // TODO: Store token in localStorage/Pinia here later
-      // localStorage.setItem('accessToken', data.accessToken)
+      if (!isValidRole(data.currentRoleCode))
+        throw new Error('Received invalid role from the server.')
+
       email.value = ''
       password.value = ''
-      return data
+
+      isAuthenticated.value = true
+      accessToken.value = data.accessToken
+      sub.value = data.sub
+      currentRoleCode.value = data.currentRoleCode
+      return
     } catch (error: unknown) {
       let errorMessage = 'An unexpected error occurred. Please try again.'
       if (error instanceof Error) {
@@ -92,6 +114,12 @@ export const useAuthStore = defineStore('auth', () => {
     password,
     isLoading,
     errors,
+
+    isAuthenticated,
+    currentRoleCode,
+    sub,
+    accessToken,
+
     validateCredentials,
     validateEmail,
     validatePassword,
