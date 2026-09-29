@@ -1,13 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { routes } from './routes'
 import { RoleCodes, useAuthStore } from '@/stores/authStore'
+import { toast } from 'vue-sonner'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: routes,
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const authStore = useAuthStore()
   const isAuthenticated = authStore.isAuthenticated
   const currentRoleCode = authStore.currentRoleCode
@@ -15,11 +16,11 @@ router.beforeEach((to, from, next) => {
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
 
   if (requiresAuth && !isAuthenticated) {
-    return next({ path: '/login', query: { redirect: to.fullPath } })
+    return { path: '/login', query: { redirect: to.fullPath } }
   }
 
   if (requiresAuth && isAuthenticated && !currentRoleCode) {
-    return next({ path: '/login', query: { reason: 'invalid-session' } })
+    return { path: '/login', query: { reason: 'invalid-session' } }
   }
 
   const allowedRoles: RoleCodes[] = (to.meta.roles as RoleCodes[]) || []
@@ -30,14 +31,15 @@ router.beforeEach((to, from, next) => {
     currentRoleCode &&
     !allowedRoles.includes(currentRoleCode)
   ) {
-    return next({ path: '/unauthorized' })
+    toast.error('Unauthorized!')
+    return { path: from.path, query: { reason: 'unauthorized' } }
   }
 
   if (to.path === '/login' && isAuthenticated) {
-    return next({ path: '/dashboard' })
+    return { path: '/dashboard' }
   }
 
-  next()
+  return
 })
 
 export default router
