@@ -1,6 +1,8 @@
+import apiClient from '@/services/apiClient'
 import Validations from '@/services/validations'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { toast } from 'vue-sonner'
 export interface LoginResponse {
   sub: number
   currentRoleCode: RoleCodes
@@ -69,23 +71,10 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(): Promise<void> {
     isLoading.value = true
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-
-      const response = await fetch(`${apiUrl}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.value,
-          password: password.value,
-        }),
+      const { data }: { data: LoginResponse } = await apiClient.post('/auth/login', {
+        email: email.value,
+        password: password.value,
       })
-
-      if (!response.ok) {
-        const errorData: LoginApiErrorResponse = await response.json()
-        throw new Error(errorData.message || 'Invalid email or password.')
-      }
-
-      const data: LoginResponse = await response.json()
 
       if (!isValidRole(data.currentRoleCode))
         throw new Error('Received invalid role from the server.')
