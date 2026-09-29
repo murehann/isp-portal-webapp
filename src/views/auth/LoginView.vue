@@ -33,7 +33,7 @@
           </label>
 
           <div
-            class="flex items-center border rounded-sm bg-white focus-within:border-blue-500"
+            class="flex items-center border rounded-sm bg-white transition-colors focus-within:border-blue-500"
             :class="
               authStore.errors.email
                 ? 'border-red-500 focus-within:border-red-500'
@@ -93,7 +93,7 @@
           </label>
 
           <div
-            class="flex items-center border rounded-sm bg-white focus-within:border-blue-500"
+            class="flex items-center border rounded-sm bg-white transition-colors focus-within:border-blue-500"
             :class="
               authStore.errors.password
                 ? 'border-red-500 focus-within:border-red-500'
@@ -142,6 +142,7 @@
               @click="showPassword = !showPassword"
               :aria-label="showPassword ? 'Hide password' : 'Show password'"
               :aria-pressed="showPassword"
+              tabindex="-1"
             >
               <!-- Eye -->
               <svg
@@ -193,7 +194,7 @@
         </div>
 
         <button
-          class="mt-2 flex items-center justify-center gap-2 bg-blue-600 p-3 rounded-sm text-white font-semibold transition-colors hover:bg-blue-500 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+          class="mt-2 flex items-center justify-center gap-2 bg-blue-600 p-3 rounded-sm text-white font-semibold transition-colors focus:outline-none border-2 border-blue-500 focus:border-black hover:bg-blue-500 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
           type="submit"
           :disabled="authStore.isLoading"
           :aria-busy="authStore.isLoading"
@@ -244,8 +245,6 @@ async function handleLogin() {
   if (!validateCredentials()) return
   try {
     await authStore.login()
-
-    toast.success('Login Successful!')
     router.push('/dashboard')
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred. Please try again.'
