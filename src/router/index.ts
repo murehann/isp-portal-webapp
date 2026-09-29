@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { routes } from './routes'
 import { RoleCodes, useAuthStore } from '@/stores/authStore'
 import { toast } from 'vue-sonner'
+import NProgress from 'nprogress'
+import 'nprogress/nprogress.css'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -9,6 +11,8 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from) => {
+  NProgress.start()
+
   const authStore = useAuthStore()
   const isAuthenticated = authStore.isAuthenticated
   const currentRoleCode = authStore.currentRoleCode
@@ -40,6 +44,10 @@ router.beforeEach((to, from) => {
   }
 
   return
+})
+
+router.afterEach(() => {
+  NProgress.done()
 })
 
 export default router
