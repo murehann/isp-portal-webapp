@@ -98,6 +98,28 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function logout(): Promise<void> {
+    isLoading.value = true
+    try {
+      const { data }: { data: { success: boolean } } = await apiClient.post('/auth/logout')
+      if (data.success) {
+        accessToken.value = null
+        currentRoleCode.value = null
+        sub.value = null
+        isAuthenticated.value = false
+        return
+      } else {
+        throw new Error('Something went wrong!')
+      }
+    } catch (error: unknown) {
+      let errorMessage = 'Something went wrong!'
+      if (error instanceof Error) errorMessage = error.message
+      toast.error(errorMessage)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     email,
     password,
@@ -113,5 +135,6 @@ export const useAuthStore = defineStore('auth', () => {
     validateEmail,
     validatePassword,
     login,
+    logout,
   }
 })
