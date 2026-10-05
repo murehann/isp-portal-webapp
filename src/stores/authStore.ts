@@ -1,23 +1,18 @@
 import apiClient from '@/services/apiClient'
-import Validations from '@/services/validations'
+import axios from 'axios'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { toast } from 'vue-sonner'
-export interface LoginResponse {
+export interface LoginSuccessResponse {
   sub: number
   currentRoleCode: RoleCodes
   accessToken: string
 }
 
-interface LoginApiErrorResponse {
-  message: string
+interface BackendErrorResponse {
+  message: string | string[]
   error: string
   statusCode: number
-}
-
-type LoginErrors = {
-  email: string | null
-  password: string | null
 }
 
 export enum RoleCodes {
@@ -28,59 +23,27 @@ export enum RoleCodes {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const email = ref<string>('')
-  const password = ref<string>('')
-  const isLoading = ref<boolean>(false)
-  const errors = ref<LoginErrors>({
-    email: null,
-    password: null,
-  })
-
   const accessToken = ref<string | null>(null)
   const sub = ref<number | null>(null)
   const isAuthenticated = ref<boolean>(false)
   const currentRoleCode = ref<RoleCodes | null>(null)
 
-  function validateCredentials(): boolean {
-    validateEmail()
-    validatePassword()
-    return errors.value.email === null && errors.value.password === null
-  }
-
-  function validateEmail(): void {
-    let validationMessage: string | null = null
-
-    if (!Validations.checkRequired(email.value)) validationMessage = 'Email is required.'
-    else if (!Validations.checkEmailFormat(email.value)) validationMessage = 'Invalid email format.'
-
-    errors.value.email = validationMessage
-  }
-
-  function validatePassword(): void {
-    let validationMessage: string | null = null
-
-    if (!Validations.checkRequired(password.value)) validationMessage = 'Password is required.'
-
-    errors.value.password = validationMessage
-  }
-
   function isValidRole(value: string): value is RoleCodes {
     return Object.values(RoleCodes).includes(value as RoleCodes)
   }
 
-  async function login(): Promise<void> {
-    isLoading.value = true
+  async function login(email: string, password: string): Promise<void> {
     try {
-      const { data }: { data: LoginResponse } = await apiClient.post('/auth/login', {
-        email: email.value,
-        password: password.value,
-      })
+      const { data }: { data: LoginSuccessResponse } = await apiClient.post<LoginSuccessResponse>(
+        '/auth/login',
+        {
+          email: email,
+          password: password,
+        },
+      )
 
       if (!isValidRole(data.currentRoleCode))
         throw new Error('Received invalid role from the server.')
-
-      email.value = ''
-      password.value = ''
 
       isAuthenticated.value = true
       accessToken.value = data.accessToken
@@ -89,17 +52,22 @@ export const useAuthStore = defineStore('auth', () => {
       return
     } catch (error: unknown) {
       let errorMessage = 'An unexpected error occurred. Please try again.'
-      if (error instanceof Error) {
-        errorMessage = error.message
-      }
+
+      if (axios.isAxiosError<BackendErrorResponse>(error)) {
+        if (error.response) {
+          const backendData = error.response?.data
+
+          if (backendData) {
+            if (Array.isArray(backendData.message)) errorMessage = backendData.message.join('\n')
+            else if (typeof backendData.message === 'string') errorMessage = backendData.message
+          }
+        }
+      } else if (error instanceof Error) errorMessage = error.message
       throw new Error(errorMessage)
-    } finally {
-      isLoading.value = false
     }
   }
 
   async function logout(): Promise<void> {
-    isLoading.value = true
     try {
       const { data }: { data: { success: boolean } } = await apiClient.post('/auth/logout')
       if (data.success) {
@@ -115,25 +83,15 @@ export const useAuthStore = defineStore('auth', () => {
       let errorMessage = 'Something went wrong!'
       if (error instanceof Error) errorMessage = error.message
       toast.error(errorMessage)
-    } finally {
-      isLoading.value = false
     }
   }
 
   return {
-    email,
-    password,
-    isLoading,
-    errors,
-
     isAuthenticated,
     currentRoleCode,
     sub,
     accessToken,
 
-    validateCredentials,
-    validateEmail,
-    validatePassword,
     login,
     logout,
   }

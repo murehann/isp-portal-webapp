@@ -34,11 +34,7 @@
 
           <div
             class="flex items-center border rounded-sm bg-white transition-colors focus-within:border-blue-500"
-            :class="
-              authStore.errors.email
-                ? 'border-red-500 focus-within:border-red-500'
-                : 'border-gray-300'
-            "
+            :class="errors.email ? 'border-red-500 focus-within:border-red-500' : 'border-gray-300'"
           >
             <span class="pl-3 text-gray-400" aria-hidden="true">
               <svg
@@ -65,9 +61,9 @@
               autocomplete="email"
               required
               aria-required="true"
-              :aria-invalid="!!authStore.errors.email"
-              :aria-describedby="authStore.errors.email ? 'email-error' : undefined"
-              v-model.trim="authStore.email"
+              :aria-invalid="!!errors.email"
+              :aria-describedby="errors.email ? 'email-error' : undefined"
+              v-model.trim="email"
               @blur="validateEmail"
               class="w-full p-3 bg-transparent focus:outline-none placeholder:text-gray-300 placeholder:font-medium text-sm text-gray-600"
             />
@@ -75,12 +71,12 @@
 
           <Transition name="slide">
             <p
-              v-if="authStore.errors.email"
+              v-if="errors.email"
               id="email-error"
               class="absolute top-full left-0 text-sm text-red-500"
               role="alert"
             >
-              {{ authStore.errors.email }}
+              {{ errors.email }}
             </p>
           </Transition>
         </div>
@@ -95,9 +91,7 @@
           <div
             class="flex items-center border rounded-sm bg-white transition-colors focus-within:border-blue-500"
             :class="
-              authStore.errors.password
-                ? 'border-red-500 focus-within:border-red-500'
-                : 'border-gray-300'
+              errors.password ? 'border-red-500 focus-within:border-red-500' : 'border-gray-300'
             "
           >
             <span class="pl-3 text-gray-400" aria-hidden="true">
@@ -126,16 +120,16 @@
               autocomplete="current-password"
               required
               aria-required="true"
-              :aria-invalid="!!authStore.errors.password"
-              :aria-describedby="authStore.errors.password ? 'password-error' : undefined"
-              v-model.trim="authStore.password"
+              :aria-invalid="!!errors.password"
+              :aria-describedby="errors.password ? 'password-error' : undefined"
+              v-model.trim="password"
               @focus="passwordFocused = true"
               @blur="handlePasswordBlur"
               class="w-full p-3 bg-transparent focus:outline-none placeholder:text-gray-300 text-sm text-gray-600"
             />
 
             <button
-              v-if="passwordFocused || authStore.password.length > 0"
+              v-if="passwordFocused || password.length > 0"
               type="button"
               class="pr-3 text-gray-400 cursor-pointer"
               @mousedown.prevent
@@ -183,12 +177,12 @@
 
           <Transition name="slide">
             <p
-              v-if="authStore.errors.password"
+              v-if="errors.password"
               id="password-error"
               class="absolute top-full left-0 text-sm text-red-500"
               role="alert"
             >
-              {{ authStore.errors.password }}
+              {{ errors.password }}
             </p>
           </Transition>
         </div>
@@ -196,11 +190,11 @@
         <button
           class="mt-2 flex items-center justify-center gap-2 bg-blue-600 p-3 rounded-sm text-white font-semibold transition-colors focus:outline-none border-2 border-blue-500 focus:border-black hover:bg-blue-500 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
           type="submit"
-          :disabled="authStore.isLoading"
-          :aria-busy="authStore.isLoading"
+          :disabled="isLoading"
+          :aria-busy="isLoading"
         >
           <Transition name="fade" mode="out-in">
-            <span v-if="authStore.isLoading" key="loading-text" class="flex items-center gap-2">
+            <span v-if="isLoading" key="loading-text" class="flex items-center gap-2">
               <svg
                 class="animate-spin h-4 w-4 text-white"
                 xmlns="http://www.w3.org/2000/svg"
@@ -227,30 +221,70 @@ import { useAuthStore } from '@/stores/authStore'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
+import Validations from '@/services/validations'
+
+type LoginErrors = {
+  email: string | null
+  password: string | null
+}
 
 const router = useRouter()
 const authStore = useAuthStore()
 
+const email = ref<string>('')
+const password = ref<string>('')
+const isLoading = ref<boolean>(false)
+const errors = ref<LoginErrors>({
+  email: null,
+  password: null,
+})
+
 const showPassword = ref(false)
 const passwordFocused = ref(false)
-
-const { validateCredentials, validateEmail, validatePassword } = authStore
 
 function handlePasswordBlur() {
   passwordFocused.value = false
   validatePassword()
 }
 
+function validateEmail(): void {
+  let validationMessage: string | null = null
+
+  if (!Validations.checkRequired(email.value)) validationMessage = 'Email is required.'
+  else if (!Validations.checkEmailFormat(email.value)) validationMessage = 'Invalid email format.'
+
+  errors.value.email = validationMessage
+}
+
+function validatePassword(): void {
+  let validationMessage: string | null = null
+
+  if (!Validations.checkRequired(password.value)) validationMessage = 'Password is required.'
+
+  errors.value.password = validationMessage
+}
+
+function validateCredentials(): boolean {
+  validateEmail()
+  validatePassword()
+  return errors.value.email === null && errors.value.password === null
+}
+
 async function handleLogin() {
   if (!validateCredentials()) return
+  isLoading.value = true
   try {
-    await authStore.login()
+    await authStore.login(email.value, password.value)
+    email.value = ''
+    password.value = ''
     router.push('/dashboard')
   } catch (error: unknown) {
     let errorMessage = 'An unexpected error occurred. Please try again.'
 
     if (error instanceof Error) errorMessage = error.message
     toast.error(errorMessage)
+  } finally {
+    isLoading.value = false
   }
 }
 </script>
