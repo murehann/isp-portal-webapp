@@ -25,21 +25,4 @@ apiClient.interceptors.request.use(
   },
 )
 
-// 3. Response Interceptor: Catch global errors (like 401 Token Expiration)
-apiClient.interceptors.response.use(
-  (response) => {
-    // If the request is successful, just return the data
-    return response
-  },
-  (error) => {
-    // If the backend returns a 401, the token has expired or is invalid
-    if (error.response?.status === 401) {
-      console.warn('API Client: 401 Unauthorized - Token likely expired.')
-      // We will add the store clearing and router redirect logic here in the next step
-    }
-
-    return Promise.reject(error)
-  },
-)
-
 export default apiClient
