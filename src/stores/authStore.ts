@@ -27,6 +27,28 @@ export const useAuthStore = defineStore('auth', () => {
   const sub = ref<number | null>(null)
   const isAuthenticated = ref<boolean>(false)
   const currentRoleCode = ref<RoleCodes | null>(null)
+  const hasAttemptedInit = ref<boolean>(false)
+
+  // In useAuthStore
+  async function initAuth() {
+    if (accessToken.value) return // Already logged in
+
+    try {
+      const res = await apiClient.post<{
+        accessToken: string
+        sub: number
+        currentRoleCode: RoleCodes
+      }>('/auth/refresh')
+
+      accessToken.value = res.data.accessToken
+      sub.value = res.data.sub
+      currentRoleCode.value = res.data.currentRoleCode
+      isAuthenticated.value = true
+    } catch {
+      // If refresh fails, ensure we are truly logged out
+      logout()
+    }
+  }
 
   function isValidRole(value: string): value is RoleCodes {
     return Object.values(RoleCodes).includes(value as RoleCodes)
@@ -91,8 +113,10 @@ export const useAuthStore = defineStore('auth', () => {
     currentRoleCode,
     sub,
     accessToken,
+    hasAttemptedInit,
 
     login,
     logout,
+    initAuth,
   }
 })
