@@ -10,10 +10,16 @@ const router = createRouter({
   routes: routes,
 })
 
-router.beforeEach((to, from) => {
+router.beforeEach(async (to, from) => {
   NProgress.start()
 
   const authStore = useAuthStore()
+
+  if (!authStore.isAuthenticated && !authStore.hasAttemptedInit) {
+    authStore.hasAttemptedInit = true
+    await authStore.initAuth()
+  }
+
   const isAuthenticated = authStore.isAuthenticated
   const currentRoleCode = authStore.currentRoleCode
 
