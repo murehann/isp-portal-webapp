@@ -108,6 +108,39 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function switchRole(roleCode: RoleCodes): Promise<void> {
+    try {
+      const { data }: { data: LoginSuccessResponse } = await apiClient.post<LoginSuccessResponse>(
+        '/auth/switch-role',
+        {
+          roleCode,
+        },
+      )
+
+      if (!isValidRole(data.currentRoleCode))
+        throw new Error('Received invalid role from the server.')
+
+      isAuthenticated.value = true
+      accessToken.value = data.accessToken
+      sub.value = data.sub
+      currentRoleCode.value = data.currentRoleCode
+    } catch (error: unknown) {
+      let errorMessage = 'An unexpected error occurred. Please try again.'
+
+      if (axios.isAxiosError<BackendErrorResponse>(error)) {
+        if (error.response) {
+          const backendData = error.response?.data
+
+          if (backendData) {
+            if (Array.isArray(backendData.message)) errorMessage = backendData.message.join('\n')
+            else if (typeof backendData.message === 'string') errorMessage = backendData.message
+          }
+        }
+      } else if (error instanceof Error) errorMessage = error.message
+      throw new Error(errorMessage)
+    }
+  }
+
   return {
     isAuthenticated,
     currentRoleCode,
@@ -118,5 +151,6 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     initAuth,
+    switchRole,
   }
 })
