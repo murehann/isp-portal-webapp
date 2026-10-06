@@ -17,26 +17,32 @@ router.beforeEach((to, from) => {
   const isAuthenticated = authStore.isAuthenticated
   const currentRoleCode = authStore.currentRoleCode
 
-  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
+  const requiresAuth = to.meta.requiresAuth
 
-  if (requiresAuth && !isAuthenticated) {
-    return { path: '/login', query: { redirect: to.fullPath } }
-  }
+  if (requiresAuth) {
+    if (!isAuthenticated) {
+      return {
+        path: '/login',
+        query: { redirect: to.fullPath },
+      }
+    }
 
-  if (requiresAuth && isAuthenticated && !currentRoleCode) {
-    return { path: '/login', query: { reason: 'invalid-session' } }
-  }
+    if (!currentRoleCode) {
+      toast.error('Invalid Session!')
+      return {
+        path: '/login',
+        query: { reason: 'invalid-session' },
+      }
+    }
 
-  const allowedRoles: RoleCodes[] = (to.meta.roles as RoleCodes[]) || []
-
-  if (
-    requiresAuth &&
-    allowedRoles.length > 0 &&
-    currentRoleCode &&
-    !allowedRoles.includes(currentRoleCode)
-  ) {
-    toast.error('Unauthorized!')
-    return { path: from.path, query: { reason: 'unauthorized' } }
+    const allowedRoles: RoleCodes[] = (to.meta.roles as RoleCodes[]) || undefined
+    if (allowedRoles?.length > 0 && !allowedRoles.includes(currentRoleCode)) {
+      toast.error('Unauthorized!')
+      return {
+        path: from.path || '/dashboard',
+        query: { reason: 'unauthorized' },
+      }
+    }
   }
 
   if (to.path === '/login' && isAuthenticated) {
